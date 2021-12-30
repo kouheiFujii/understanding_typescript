@@ -9,14 +9,24 @@ function Logger(logString: string) {
 
 function WithTemplate(hookId: string) {
   console.log("Definition WithTemplate");
-  return function (constructor: any) {
-    console.log("CALL WithTemplate");
-    const hookEl = document.getElementById(hookId);
-    const p = new constructor();
-    if (hookEl) {
-      hookEl.innerHTML = "<h1></h1>";
-      hookEl.querySelector("h1")!.textContent = p.name;
-    }
+  return function <T extends { new (...args: any[]): { name: string } }>(
+    originalConstructor: T
+  ) {
+    // 新しいクラスを作成
+    return class extends originalConstructor {
+      constructor(..._: any[]) {
+        // 継承しているので super 必要
+        super();
+        // クラスを継承しているのでロジックの移動が可能
+        console.log("CALL WithTemplate");
+        const hookEl = document.getElementById(hookId);
+        if (hookEl) {
+          hookEl.innerHTML = "<h1></h1>";
+          // 継承したクラスの this を指定
+          hookEl.querySelector("h1")!.textContent = this.name;
+        }
+      }
+    };
   };
 }
 
