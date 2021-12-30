@@ -102,3 +102,33 @@ class Product {
     return this._price * tax;
   }
 }
+
+function AutoBind(_: any, _2: string | Symbol, descriptor: PropertyDescriptor) {
+  // descriptor.value でメソッドにアクセス可能
+  const originalMethod = descriptor.value;
+  // PropertyDescriptor のプロパティを上書きしている
+  const adjMethod = {
+    // コメントアウトしても動く
+    configable: true,
+    // コメントアウトしても動く
+    enumable: false,
+    get() {
+      // javascript の bind メソッドで this を縛る
+      const boundFn = originalMethod.bind(this);
+      return boundFn;
+    },
+  };
+  return adjMethod;
+}
+class Printer {
+  message = "This works!";
+  @AutoBind
+  showMessage() {
+    console.log(this.message);
+  }
+}
+
+const p = new Printer();
+
+const button = document.querySelector("button")!;
+button.addEventListener("click", p.showMessage);
