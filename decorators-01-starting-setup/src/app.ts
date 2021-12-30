@@ -31,11 +31,34 @@ class Person {
 
 const person = new Person();
 
-// @WithTemplate("app")
-// class Animal {
-//   name = "Pochi";
-//   constructor() {
-//     console.log("create animal");
-//   }
-// }
-// const animal = new Animal();
+// ------
+
+// target = @Log直下。この例でいうと target = title
+// propertyName = class 内の関数。この例でいうと propertyName = getPriceWithTax
+function Log(target: any, propertyName: string | Symbol) {
+  console.log("Property decorator");
+  console.log(target, propertyName);
+}
+
+class Product {
+  @Log
+  title: string;
+  private _price: number;
+
+  set price(val: number) {
+    if (val > 0) {
+      this._price = val;
+    } else {
+      throw new Error("Invalid value!");
+    }
+  }
+
+  constructor(t: string, p: number) {
+    this.title = t;
+    this._price = p;
+  }
+
+  getPriceWithTax(tax: number) {
+    return this._price * tax;
+  }
+}
