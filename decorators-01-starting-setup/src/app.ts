@@ -35,16 +35,45 @@ const person = new Person();
 
 // target = @Log直下。この例でいうと target = title
 // propertyName = class 内の関数。この例でいうと propertyName = getPriceWithTax
+// property 直下に置けばその値のログが見れる
 function Log(target: any, propertyName: string | Symbol) {
   console.log("Property decorator");
   console.log(target, propertyName);
 }
 
+// Accessor の値を取得する
+function Log2(target: any, name: string, descriptor: PropertyDescriptor) {
+  console.log("Accessor decorator");
+  console.log(target);
+  console.log(name);
+  console.log(descriptor);
+}
+
+// Method の値を取得する
+function Log3(
+  target: any,
+  name: string | Symbol,
+  descriptor: PropertyDescriptor
+) {
+  console.log("Method decorator");
+  console.log(target);
+  console.log(name);
+  console.log(descriptor);
+}
+
+// 引数の値と対応する ポジションが分かる
+function Log4(target: any, name: string | Symbol, position: number) {
+  console.log("Parameter decorator");
+  console.log(target);
+  console.log(name);
+  console.log(position); // 0
+}
 class Product {
   @Log
   title: string;
   private _price: number;
 
+  @Log2
   set price(val: number) {
     if (val > 0) {
       this._price = val;
@@ -58,7 +87,8 @@ class Product {
     this._price = p;
   }
 
-  getPriceWithTax(tax: number) {
+  @Log3
+  getPriceWithTax(@Log4 tax: number) {
     return this._price * tax;
   }
 }
