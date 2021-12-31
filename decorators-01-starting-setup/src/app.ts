@@ -132,3 +132,94 @@ const p = new Printer();
 
 const button = document.querySelector("button")!;
 button.addEventListener("click", p.showMessage);
+
+// -----
+interface ValidatorConfig {
+  // [] でキー側の型を指定している
+  [property: string]: {
+    [validatableProp: string]: string[]; // ["required", "positive"]
+  };
+}
+
+const registeredValidators: ValidatorConfig = {};
+
+function Required(target: any, propName: string) {
+  registeredValidators[target.constructor.name] = {
+    // registeredValidatorsに値が入っていればスプレッド構文で配合
+    ...registeredValidators[target.constructor.name],
+    [propName]: ["required"],
+    // なにやってるかわからん
+    // [propName]: [
+    //   ...(registeredValidators[target.constructor.name]?.[propName] ?? []),
+    //   "required",
+    // ],
+  };
+}
+
+function PositiveNumber(target: any, propName: string) {
+  registeredValidators[target.constructor.name] = {
+    // registeredValidatorsに値が入っていればスプレッド構文で配合
+    ...registeredValidators[target.constructor.name],
+    [propName]: ["positive"],
+    // なにやってるかわからん
+    // [propName]: [
+    //   ...(registeredValidators[target.constructor.name]?.[propName] ?? []),
+    //   "positive",
+    // ],
+  };
+}
+
+function validate(obj: any) {
+  // constructor.name にアクセスするとクラス名が取得できる
+  // Validators の中から該当するclassを指定。
+  const validatorConfig = registeredValidators[obj.constructor.name];
+
+  if (!validatorConfig) {
+    return true;
+  }
+  let isValid = true;
+  for (const prop in validatorConfig) {
+    for (const validator of validatorConfig[prop]) {
+      switch (validator) {
+        case "required":
+          isValid = isValid && !!obj[prop];
+          break;
+        case "positive":
+          isValid = isValid && obj[prop] > 0;
+          break;
+      }
+    }
+  }
+  return isValid;
+}
+
+class Cource {
+  @Required
+  title: string;
+  @PositiveNumber
+  price: number;
+  constructor(t: string, p: number) {
+    this.title = t;
+    this.price = p;
+  }
+}
+
+const courceForm = document.querySelector("form")!;
+
+courceForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const titleEl = document.getElementById("title") as HTMLInputElement;
+  const priceEl = document.getElementById("price") as HTMLInputElement;
+
+  const title = titleEl.value;
+  // HTMLInputElement は string 型なので + を追記すると number 型に推論してくれる
+  const price = +priceEl.value;
+
+  const createCource = new Cource(title, price);
+
+  if (!validate(createCource)) {
+    alert("Invalid input, please try again!");
+    return;
+  }
+  console.log(createCource);
+});
