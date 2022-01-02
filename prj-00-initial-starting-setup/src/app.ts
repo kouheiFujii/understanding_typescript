@@ -1,3 +1,35 @@
+// validatable
+interface Validatable {
+  value: string | number;
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+}
+
+function validate(validatable: Validatable) {
+  let isValid = true;
+
+  if (validatable.required) {
+    isValid = isValid && validatable.value.toString().trim().length !== 0;
+  }
+  if (validatable.minLength != null && typeof validatable.value === "string") {
+    isValid = isValid && validatable.value.length >= validatable.minLength;
+  }
+  if (validatable.maxLength != null && typeof validatable.value === "string") {
+    isValid = isValid && validatable.value.length <= validatable.maxLength;
+  }
+  if (validatable.min != null && typeof validatable.value === "number") {
+    isValid = isValid && validatable.value >= validatable.min;
+  }
+  if (validatable.max != null && typeof validatable.value === "number") {
+    isValid = isValid && validatable.value <= validatable.max;
+  }
+
+  return isValid;
+}
+
 // autobind decorator
 function autobind(_: any, _2: string, descriptor: PropertyDescriptor) {
   const originMethod = descriptor.value;
@@ -50,11 +82,27 @@ class ProjectInput {
     const enteredTitle = this.inputTitleElement.value;
     const enteredDescription = this.inputDescriptionElement.value;
     const enteredPeople = this.inputPeopleElement.value;
+
+    const titleValidatable: Validatable = {
+      value: enteredTitle,
+      required: true,
+    };
+    const descriptionValidatable: Validatable = {
+      value: enteredDescription,
+      required: true,
+      minLength: 5,
+    };
+    const peopleValidatable: Validatable = {
+      value: +enteredPeople,
+      required: true,
+      max: 5,
+    };
+
     // 未入力はエラー
     if (
-      enteredTitle.trim().length === 0 ||
-      enteredDescription.trim().length === 0 ||
-      enteredPeople.trim().length === 0
+      !validate(titleValidatable) ||
+      !validate(descriptionValidatable) ||
+      !validate(peopleValidatable)
     ) {
       alert("Invalid value. please try again!");
       return;
@@ -78,8 +126,8 @@ class ProjectInput {
     if (Array.isArray(userInput)) {
       const [title, desc, people] = userInput;
       console.log(title, desc, people);
+      this.clearInputs();
     }
-    this.clearInputs();
   }
 
   private configure() {
