@@ -18,7 +18,7 @@ class ProjectInput {
   element: HTMLFormElement;
   inputTitleElement: HTMLInputElement;
   inputDescriptionElement: HTMLInputElement;
-  inputPeapleElement: HTMLInputElement;
+  inputPeopleElement: HTMLInputElement;
 
   constructor() {
     this.templateElement = document.getElementById(
@@ -34,27 +34,59 @@ class ProjectInput {
     // それぞれの input の値を取得
     this.inputTitleElement = this.element.querySelector(
       "#title"
-    )! as HTMLInputElement;
+    ) as HTMLInputElement;
     this.inputDescriptionElement = this.element.querySelector(
       "#description"
-    )! as HTMLInputElement;
-    this.inputPeapleElement = this.element.querySelector(
-      "#peaple"
-    )! as HTMLInputElement;
+    ) as HTMLInputElement;
+    this.inputPeopleElement = this.element.querySelector(
+      "#people"
+    ) as HTMLInputElement;
 
     this.configure();
     this.attach();
   }
 
+  private gatherUserInput(): [string, string, number] | void {
+    const enteredTitle = this.inputTitleElement.value;
+    const enteredDescription = this.inputDescriptionElement.value;
+    const enteredPeople = this.inputPeopleElement.value;
+    // 未入力はエラー
+    if (
+      enteredTitle.trim().length === 0 ||
+      enteredDescription.trim().length === 0 ||
+      enteredPeople.trim().length === 0
+    ) {
+      alert("Invalid value. please try again!");
+      return;
+    } else {
+      // this.inputPeopleElement.value は string型になってしまうので +enteredPeople で number 型に変換している
+      return [enteredTitle, enteredDescription, +enteredPeople];
+    }
+  }
+
+  private clearInputs() {
+    this.inputTitleElement.value = "";
+    this.inputDescriptionElement.value = "";
+    this.inputPeopleElement.value = "";
+  }
+
   @autobind
   private submitHandler(event: Event) {
     event.preventDefault();
-    console.log(this.inputTitleElement.value);
+    const userInput = this.gatherUserInput();
+    // 配列ならば値を割り振る
+    if (Array.isArray(userInput)) {
+      const [title, desc, people] = userInput;
+      console.log(title, desc, people);
+    }
+    this.clearInputs();
   }
+
   private configure() {
     // bind で this を固定
     this.element.addEventListener("submit", this.submitHandler.bind(this));
   }
+
   private attach() {
     this.hostElement.insertAdjacentElement("afterbegin", this.element);
   }
