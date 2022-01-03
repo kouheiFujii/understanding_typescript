@@ -15,15 +15,20 @@ class Project {
 
 // Project State Management
 // ただの関数のため type を使用
-type Listner = (item: Project[]) => void;
-class ProjectState {
-  private listeners: Listner[] = [];
-  private projects: Project[] = [];
-  private static instance: ProjectState;
+type Listner<T> = (item: T[]) => void;
 
-  addListener(listenerFn: Listner) {
+// inheritance
+class State<T> {
+  // protected 継承先からならアクセス可能
+  protected listeners: Listner<T>[] = [];
+
+  addListener(listenerFn: Listner<T>) {
     this.listeners.push(listenerFn);
   }
+}
+class ProjectState extends State<Project> {
+  private projects: Project[] = [];
+  private static instance: ProjectState;
 
   addProject(title: string, description: string, numOfPeople: number) {
     const newProject = new Project(
@@ -98,21 +103,52 @@ function autobind(_: any, _2: string, descriptor: PropertyDescriptor) {
   return adjDescriptor;
 }
 
-class ProjectList {
+// Component Base Class
+// abstract を指定して instance 化の不可
+abstract class Component<T extends HTMLElement, U extends HTMLElement> {
   templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLElement;
+  hostElement: T;
+  element: U;
+  constructor(
+    templateId: string,
+    hostElementId: string,
+    insertAtStart: boolean,
+    newElementId?: string
+  ) {
+    this.templateElement = document.getElementById(
+      templateId
+    ) as HTMLTemplateElement;
+    this.hostElement = document.getElementById(hostElementId) as T;
+    // 別ファイルの要素をコピーする。true で深いコピー
+    const importNode = document.importNode(this.templateElement.content, true);
+    this.element = importNode.firstElementChild as U;
+    if (newElementId) {
+      this.element.id = newElementId;
+    }
+    this.attach(insertAtStart);
+  }
+  private attach(insertAtBeginning: boolean) {
+    this.hostElement.insertAdjacentElement(
+      insertAtBeginning ? "afterbegin" : "beforeend",
+      this.element
+    );
+  }
+
+  // この class を継承したときに以下のメソッドを強制
+  abstract configure(): void;
+  abstract renderContent(): void;
+}
+
+class ProjectList extends Component<HTMLDivElement, HTMLElement> {
   assignedProjects: Project[] = [];
   // project が active か fiished か属性を分けて生成
   constructor(readonly type: "active" | "finished") {
-    this.templateElement = document.getElementById(
-      "project-list"
-    ) as HTMLTemplateElement;
-    this.hostElement = document.getElementById("app") as HTMLDivElement;
-    const importNode = document.importNode(this.templateElement.content, true);
-    this.element = importNode.firstElementChild as HTMLElement;
-    this.element.id = `${this.type}-projects`;
+    super("project-list", "app", false, `${type}-projects`);
+    this.configure();
+    this.renderContent();
+  }
 
+  configure() {
     projectState.addListener((projects: Project[]) => {
       // status が active でなければ false で削除
       const relevantProjects = projects.filter((prj) => {
@@ -124,9 +160,14 @@ class ProjectList {
       this.assignedProjects = relevantProjects;
       this.renderProjects();
     });
+  }
 
-    this.attach();
-    this.renderContent();
+  // DOM生成
+  renderContent() {
+    const listId = `${this.type}-projects-list`;
+    this.element.querySelector("ul")!.id = listId;
+    this.element.querySelector("h2")!.textContent =
+      this.type.toUpperCase() + " PROJECTS";
   }
 
   private renderProjects() {
@@ -141,39 +182,15 @@ class ProjectList {
       listEl.appendChild(listItme);
     }
   }
-  // DOM生成
-  private renderContent() {
-    const listId = `${this.type}-projects-list`;
-    this.element.querySelector("ul")!.id = listId;
-    this.element.querySelector("h2")!.textContent =
-      this.type.toUpperCase() + " PROJECTS";
-  }
-
-  // レンダリング開始位置設定
-  private attach() {
-    this.hostElement.insertAdjacentElement("beforeend", this.element);
-  }
 }
-class ProjectInput {
-  templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLFormElement;
+class ProjectInput extends Component<HTMLDivElement, HTMLFormElement> {
   inputTitleElement: HTMLInputElement;
   inputDescriptionElement: HTMLInputElement;
   inputPeopleElement: HTMLInputElement;
 
   constructor() {
-    this.templateElement = document.getElementById(
-      "project-input"
-    ) as HTMLTemplateElement;
-    this.hostElement = document.getElementById("app") as HTMLDivElement;
-    // このクラスをインスタンス化したときに即座に form をレンダリングさせたいため以下の処理を行っている
-    // 別ファイルの要素をコピーする。true で深いコピー
-    const importNode = document.importNode(this.templateElement.content, true);
-    this.element = importNode.firstElementChild as HTMLFormElement;
-    // 要素に id を付与する例。あえてやっている
-    this.element.id = "user-input";
-    // それぞれの input の値を取得
+    super("project-input", "app", true, "user-input");
+
     this.inputTitleElement = this.element.querySelector(
       "#title"
     ) as HTMLInputElement;
@@ -185,8 +202,13 @@ class ProjectInput {
     ) as HTMLInputElement;
 
     this.configure();
-    this.attach();
   }
+
+  configure() {
+    this.element.addEventListener("submit", this.submitHandler);
+  }
+
+  renderContent() {}
 
   private gatherUserInput(): [string, string, number] | void {
     const enteredTitle = this.inputTitleElement.value;
@@ -238,15 +260,6 @@ class ProjectInput {
       projectState.addProject(title, desc, people);
       this.clearInputs();
     }
-  }
-
-  private configure() {
-    // bind で this を固定
-    this.element.addEventListener("submit", this.submitHandler.bind(this));
-  }
-
-  private attach() {
-    this.hostElement.insertAdjacentElement("afterbegin", this.element);
   }
 }
 
