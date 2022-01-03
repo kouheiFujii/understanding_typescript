@@ -1,3 +1,57 @@
+// Project
+enum ProjectStatus {
+  Active,
+  Finished,
+}
+class Project {
+  constructor(
+    public id: string,
+    public title: string,
+    public description: string,
+    public people: number,
+    public status: ProjectStatus
+  ) {}
+}
+
+// Project State Management
+// ただの関数のため type を使用
+type Listner = (item: Project[]) => void;
+class ProjectState {
+  private listeners: Listner[] = [];
+  private projects: Project[] = [];
+  private static instance: ProjectState;
+
+  addListener(listenerFn: Listner) {
+    this.listeners.push(listenerFn);
+  }
+
+  addProject(title: string, description: string, numOfPeople: number) {
+    const newProject = new Project(
+      Math.random().toString(),
+      title,
+      description,
+      numOfPeople,
+      ProjectStatus.Active
+    );
+    this.projects.push(newProject);
+    for (const listenerFn of this.listeners) {
+      listenerFn(this.projects.slice());
+    }
+  }
+
+  // class に直接紐づくようになる
+  // getInstance したときに instance があれば返却するので singleton が保証されている
+  static getInstance() {
+    if (this.instance) {
+      return this.instance;
+    }
+    this.instance = new ProjectState();
+    return this.instance;
+  }
+}
+
+const projectState = ProjectState.getInstance();
+
 // validatable
 interface Validatable {
   value: string | number;
@@ -48,6 +102,7 @@ class ProjectList {
   templateElement: HTMLTemplateElement;
   hostElement: HTMLDivElement;
   element: HTMLElement;
+  assignedProjects: Project[] = [];
   // project が active か fiished か属性を分けて生成
   constructor(readonly type: "active" | "finished") {
     this.templateElement = document.getElementById(
@@ -57,10 +112,35 @@ class ProjectList {
     const importNode = document.importNode(this.templateElement.content, true);
     this.element = importNode.firstElementChild as HTMLElement;
     this.element.id = `${this.type}-projects`;
+
+    projectState.addListener((projects: Project[]) => {
+      // status が active でなければ false で削除
+      const relevantProjects = projects.filter((prj) => {
+        if (this.type === "active") {
+          return prj.status === ProjectStatus.Active;
+        }
+        return prj.status === ProjectStatus.Finished;
+      });
+      this.assignedProjects = relevantProjects;
+      this.renderProjects();
+    });
+
     this.attach();
     this.renderContent();
   }
 
+  private renderProjects() {
+    const listEl = document.getElementById(
+      `${this.type}-projects-list`
+    )! as HTMLUListElement;
+    // 一度クリアして再レンダリング
+    listEl.innerHTML = "";
+    for (const prjItem of this.assignedProjects) {
+      const listItme = document.createElement("li");
+      listItme.textContent = prjItem.title;
+      listEl.appendChild(listItme);
+    }
+  }
   // DOM生成
   private renderContent() {
     const listId = `${this.type}-projects-list`;
@@ -155,7 +235,7 @@ class ProjectInput {
     // 配列ならば値を割り振る
     if (Array.isArray(userInput)) {
       const [title, desc, people] = userInput;
-      console.log(title, desc, people);
+      projectState.addProject(title, desc, people);
       this.clearInputs();
     }
   }
