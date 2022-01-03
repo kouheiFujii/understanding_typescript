@@ -51,6 +51,19 @@ class ProjectState extends State<Project> {
       ProjectStatus.Active
     );
     this.projects.push(newProject);
+    this.updateListner();
+  }
+
+  // project の status 書き換え処理
+  moveProject(projectId: string, newStatus: ProjectStatus) {
+    const project = this.projects.find((prj) => prj.id === projectId);
+    if (project && project.status !== newStatus) {
+      project.status = newStatus;
+      this.updateListner();
+    }
+  }
+
+  private updateListner() {
     for (const listenerFn of this.listeners) {
       listenerFn(this.projects.slice());
     }
@@ -176,7 +189,10 @@ class ProjectItem
   // drag 処理 start event
   @autobind
   dragStartHandler(event: DragEvent): void {
-    console.log(event);
+    // データの識別のために値を付与
+    event.dataTransfer!.setData("text/plain", this.project.id);
+    // ドラッグ操作の許可する effect を指定
+    event.dataTransfer!.effectAllowed = "move";
   }
 
   // drag 処理 end event
@@ -209,12 +225,25 @@ class ProjectList
 
   // drag 中の event
   @autobind
-  dragOverHandler(_: DragEvent): void {
-    const listEl = this.element.querySelector("ul")!;
-    listEl.classList.add("droppable");
+  dragOverHandler(event: DragEvent): void {
+    // 値が付与されていればイベント開始
+    if (event.dataTransfer && event.dataTransfer.types[0] === "text/plain") {
+      // javascriptは drop イベントを許可していないため必要
+      // 公式 https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Drag_operations
+      event.preventDefault();
+      const listEl = this.element.querySelector("ul")!;
+      listEl.classList.add("droppable");
+    }
   }
 
-  dropHandler(_: DragEvent): void {}
+  @autobind
+  dropHandler(event: DragEvent): void {
+    const prjId = event.dataTransfer!.getData("text/plain");
+    projectState.moveProject(
+      prjId,
+      this.type === "active" ? ProjectStatus.Active : ProjectStatus.Finished
+    );
+  }
 
   // drag 適用されている field から離れると発生
   @autobind
